@@ -10,7 +10,7 @@ ShellRoot {
     id: root
 
     // Theme
-    property color colBg: "#1a1b26"
+    property color colBg: "#1a1819"
     property color colFg: "#a9b1d6"
     property color colMuted: "#444b6a"
     property color colCyan: "#0db9d7"
@@ -53,6 +53,7 @@ ShellRoot {
         color: "transparent"
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.namespace: "quickshell-pill"
         
         // Cấu hình vùng nhận diện click (Mask)
         mask: pill.isMini ? pillRegion : fullRegion
@@ -93,15 +94,15 @@ ShellRoot {
             anchors.horizontalCenter: parent.horizontalCenter
             
             property bool isMini: true
-            property real contentWidth: swipeView.count > 0 ? Math.max(grid1.implicitWidth, grid2.implicitWidth) : 0
-            property real contentHeight: swipeView.count > 0 ? Math.max(grid1.implicitHeight, grid2.implicitHeight) : 0
+            property real contentWidth: swipeView.count > 0 ? Math.max(grid1.implicitWidth, grid2.implicitWidth, layout3.implicitWidth, radial.implicitWidth) : 0
+            property real contentHeight: swipeView.count > 0 ? Math.max(grid1.implicitHeight, grid2.implicitHeight, layout3.implicitHeight, radial.implicitHeight) : 0
             
             implicitWidth: isMini ? 60 : contentWidth + 50
             implicitHeight: isMini ? 30 : contentHeight + 60 // Căn vừa đủ kích thước lưới + PageIndicator
             radius: 15
-            color: root.colBg
+            color: Qt.alpha(root.colBg, 0.6) // Làm trong suốt nền (60% opacity)
             
-            border.color: root.colMuted
+            border.color: Qt.alpha(root.colMuted, 0.5)
             border.width: 1
             clip: true
 
@@ -137,8 +138,8 @@ ShellRoot {
             SwipeView {
                 id: swipeView
                 anchors.fill: parent
-                anchors.topMargin: 15
-                anchors.bottomMargin: 30
+                anchors.topMargin: 30
+                anchors.bottomMargin: 15
                 anchors.leftMargin: 25
                 anchors.rightMargin: 25
                 clip: true
@@ -146,7 +147,12 @@ ShellRoot {
                 opacity: pill.isMini ? 0 : 1
                 visible: opacity > 0
                 Behavior on opacity { NumberAnimation { duration: 150 } }
-
+                Item {
+                    RadialMenuModule {
+                        id: radial
+                        anchors.centerIn: parent
+                    }
+                }
                 Item {
                     GridLayout {
                         id: grid1
@@ -196,30 +202,141 @@ ShellRoot {
                         rowSpacing: 16
                         columnSpacing: 32
                         
-                        // Thêm các module vào trang 2
-                        ButtonModule {
-                            text: "Mở Cài đặt"
-                            colorBg: root.colCyan
+                        ToggleButtonModule {
+                            text: "󰤨  Wi-Fi"
+                            isOn: true
+                            colorActive: root.colCyan
+                            colorInactive: root.colMuted
                             colorHover: root.colBlue
                             colorText: root.colBg
+                            colorTextOff: root.colFg
                             fontFamily: root.fontFamily
                             fontSize: root.fontSize - 2
                         }
-                        ButtonModule {
-                            text: "Mở Terminal"
-                            colorBg: root.colYellow
-                            colorHover: root.colYellow
+                        
+                        ToggleButtonModule {
+                            text: "󰂯  Bluetooth"
+                            isOn: false
+                            colorActive: root.colBlue
+                            colorInactive: root.colMuted
+                            colorHover: root.colCyan
                             colorText: root.colBg
+                            colorTextOff: root.colFg
                             fontFamily: root.fontFamily
                             fontSize: root.fontSize - 2
+                        }
+
+                        SliderModule {
+                            iconText: ""
+                            value: 0.7
+                            colorAccent: root.colYellow
+                            colorMuted: root.colMuted
+                            colorFg: root.colFg
+                            fontFamily: root.fontFamily
+                            fontSize: root.fontSize
+                        }
+
+                        SliderModule {
+                            iconText: "󰃠"
+                            value: 0.4
+                            colorAccent: root.colCyan
+                            colorMuted: root.colMuted
+                            colorFg: root.colFg
+                            fontFamily: root.fontFamily
+                            fontSize: root.fontSize
                         }
                     }
                 }
+                
+                Item {
+                    ScrollView {
+                        id: layout3
+                        anchors.centerIn: parent
+                        implicitWidth: 240
+                        implicitHeight: Math.min(contentCol.implicitHeight, 200)
+                        width: implicitWidth
+                        height: implicitHeight
+                        clip: true
+                        
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                        
+                        ColumnLayout {
+                            id: contentCol
+                            width: layout3.width
+                            spacing: 12
+
+                            Text {
+                                text: "To-Do List"
+                                color: root.colCyan
+                                font { family: root.fontFamily; pixelSize: root.fontSize; bold: true }
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.bottomMargin: 8
+                            }
+
+                            TaskModule {
+                                text: "Uống nước"
+                                isDone: true
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Check email"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Viết báo cáo"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Code tính năng mới"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Họp nhóm lúc 3h"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Tập thể dục"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                        }
+                    }
+                }
+
             }
 
             PageIndicator {
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: 8
+                anchors.top: parent.top
+                anchors.topMargin: 8
                 anchors.horizontalCenter: parent.horizontalCenter
                 count: swipeView.count
                 currentIndex: swipeView.currentIndex
