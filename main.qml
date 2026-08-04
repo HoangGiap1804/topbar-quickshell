@@ -24,6 +24,22 @@ ShellRoot {
     property int memUsage: 0
     property var lastCpuIdle: 0
     property var lastCpuTotal: 0
+    property bool isSidebarOpen: false
+    
+    // Toast Notification Manager
+    ToastManager {
+        id: toastManager
+        colBg: root.colBg
+        colFg: root.colFg
+        colCyan: root.colCyan
+        colYellow: root.colYellow
+        fontFamily: root.fontFamily
+        fontSize: root.fontSize
+    }
+    
+    function showToast(msg, type) {
+        toastManager.show(msg, type);
+    }
 
     // Cửa sổ dự trữ khoảng không gian 40px ở mép trên cùng
     PanelWindow {
@@ -94,8 +110,13 @@ ShellRoot {
             anchors.horizontalCenter: parent.horizontalCenter
             
             property bool isMini: true
-            property real contentWidth: swipeView.count > 0 ? Math.max(grid1.implicitWidth, grid2.implicitWidth, layout3.implicitWidth, radial.implicitWidth) : 0
-            property real contentHeight: swipeView.count > 0 ? Math.max(grid1.implicitHeight, grid2.implicitHeight, layout3.implicitHeight, radial.implicitHeight) : 0
+            onIsMiniChanged: {
+                if (isMini) {
+                    root.isSidebarOpen = false;
+                }
+            }
+            property real contentWidth: swipeView.count > 0 ? Math.max(grid1.implicitWidth, grid2.implicitWidth, layout3.implicitWidth, radial.implicitWidth, calendar.implicitWidth, testPage.implicitWidth) : 0
+            property real contentHeight: swipeView.count > 0 ? Math.max(grid1.implicitHeight, grid2.implicitHeight, layout3.implicitHeight, radial.implicitHeight, calendar.implicitHeight, testPage.implicitHeight) : 0
             
             implicitWidth: isMini ? 60 : contentWidth + 50
             implicitHeight: isMini ? 30 : contentHeight + 60 // Căn vừa đủ kích thước lưới + PageIndicator
@@ -266,6 +287,13 @@ ShellRoot {
                             width: layout3.width
                             spacing: 12
 
+                            ButtonModule {
+                                text: root.isSidebarOpen ? "Đóng Sidebar" : "Mở Sidebar"
+                                onClicked: root.isSidebarOpen = !root.isSidebarOpen
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.bottomMargin: 8
+                            }
+
                             Text {
                                 text: "To-Do List"
                                 color: root.colCyan
@@ -331,6 +359,53 @@ ShellRoot {
                         }
                     }
                 }
+                
+                Item {
+                    CalendarModule {
+                        id: calendar
+                        anchors.centerIn: parent
+                        colorBg: root.colBg
+                        colorFg: root.colFg
+                        colorMuted: root.colMuted
+                        colorAccent: root.colCyan
+                        fontFamily: root.fontFamily
+                    }
+                }
+                
+                Item {
+                    implicitWidth: testPage.implicitWidth
+                    implicitHeight: testPage.implicitHeight
+                    
+                    ColumnLayout {
+                        id: testPage
+                        anchors.centerIn: parent
+                        spacing: 16
+                        
+                        Text {
+                            text: "Test Toast Notification"
+                            color: root.colCyan
+                            font.family: root.fontFamily
+                            font.pixelSize: root.fontSize + 2
+                            font.bold: true
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                        
+                        ButtonModule {
+                            text: "Thành công (Success)"
+                            onClicked: root.showToast("Dữ liệu đã được lưu thành dfasd fasdfasdfasdf asdf sad fasfd asdf asdf asdf asdf asd fasdfasdfcông!", "success")
+                        }
+                        
+                        ButtonModule {
+                            text: "Cảnh báo (Warning)"
+                            onClicked: root.showToast("Pin yếu! Vui lòng cắm sạc.", "warning")
+                        }
+                        
+                        ButtonModule {
+                            text: "Thông thường (Info)"
+                            onClicked: root.showToast("Đã có bản cập nhật hệ thống mới.", "info")
+                        }
+                    }
+                }
 
             }
 
@@ -353,4 +428,92 @@ ShellRoot {
             }
         }
     }
+    
+    // Sidebar trượt từ phải sang trái
+    PanelWindow {
+        id: sidebarWindow
+        anchors.right: true
+        
+        implicitWidth:60
+        implicitHeight: 120 // Cửa sổ nhỏ gọn
+        color: "transparent" // Trong suốt toàn bộ cửa sổ để không che màn hình
+        
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.exclusionMode: ExclusionMode.Ignore
+        
+        Region { id: emptyRegion }
+        // Chỉ nhận click khi sidebar đang mở và ở trong vùng của sidebar
+        mask: root.isSidebarOpen ? sidebarRegion : emptyRegion
+        
+        Region {
+            id: sidebarRegion
+            x: Math.floor(sidebarRect.x)
+            y: Math.floor(sidebarRect.y)
+            width: Math.ceil(sidebarRect.width)
+            height: Math.ceil(sidebarRect.height)
+        }
+        
+        Rectangle {
+            id: sidebarRect
+            width: 300
+            height: parent.height
+            // Đẩy ra ngoài (x=300) nếu đóng, kéo vào (x=0) nếu mở
+            x: root.isSidebarOpen ? 0 : 300
+            opacity: root.isSidebarOpen ? 1 : 0
+            
+            Behavior on x { 
+                NumberAnimation { 
+                    // Lúc mở thì chạy 500ms mượt mà (OutExpo), lúc đóng thì chạy 300ms dứt khoát (InExpo)
+                    duration: root.isSidebarOpen ? 500 : 300 
+                    easing.type: root.isSidebarOpen ? Easing.OutExpo : Easing.InExpo
+                } 
+            }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: root.isSidebarOpen ? 400 : 250
+                }
+            }
+            
+            color: Qt.alpha(root.colBg, 0.9)
+            border.color: Qt.alpha(root.colMuted, 0.5)
+            border.width: 1
+            radius: 15
+            
+            // Xóa bo góc bên phải để dính chặt vào cạnh màn hình
+            Rectangle {
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 15
+                color: Qt.alpha(root.colBg, 0.9)
+            }
+            
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 16
+                
+                Text {
+                    text: "Sidebar Trượt"
+                    color: root.colCyan
+                    font.family: root.fontFamily
+                    font.pixelSize: root.fontSize + 4
+                    font.bold: true
+                    Layout.alignment: Qt.AlignHCenter
+                }
+                
+                Text {
+                    text: "Bạn có thể để thông báo,\nnhạc, lịch ở đây!"
+                    color: root.colFg
+                    font.family: root.fontFamily
+                    font.pixelSize: root.fontSize
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.alignment: Qt.AlignHCenter
+                }
+                
+                Item { Layout.fillHeight: true } // Đẩy nội dung lên trên
+            }
+        }
+    }
+    
 } // Đóng ShellRoot

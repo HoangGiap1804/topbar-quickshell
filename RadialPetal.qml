@@ -67,6 +67,7 @@ Item {
         Connections {
             target: rootPetal
             function onIsActiveChanged() { fgCanvas.requestPaint(); }
+            function onPetalValueChanged() { fgCanvas.requestPaint(); }
         }
         
         onPaint: {

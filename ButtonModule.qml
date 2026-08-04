@@ -8,6 +8,8 @@ Rectangle {
     property color colorHover: "#7aa2f7"
     property string fontFamily: "JetBrainsMono Nerd Font"
     property int fontSize: 14
+    
+    signal clicked()
 
     Layout.alignment: Qt.AlignHCenter
     Layout.columnSpan: 2
@@ -33,7 +35,7 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            console.log("Button clicked!")
+            parent.clicked()
         }
     }
 }
