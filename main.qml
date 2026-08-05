@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Shapes
 
 ShellRoot {
     id: root
@@ -48,10 +49,10 @@ ShellRoot {
         anchors.left: true
         anchors.right: true
         
-        implicitHeight: 40
+        implicitHeight: 25
         color: "transparent"
         
-        exclusiveZone: 40
+        exclusiveZone: 20
         WlrLayershell.layer: WlrLayer.Top
         
         // Không nhận click
@@ -96,20 +97,59 @@ ShellRoot {
                 var inside = mouse.x >= pillRegion.x && mouse.x <= pillRegion.x + pillRegion.width
                           && mouse.y >= pillRegion.y && mouse.y <= pillRegion.y + pillRegion.height;
                 // Chỉ thu nhỏ khi click ra ngoài vùng của Pill
-                if (!inside) {
-                    pill.isMini = true;
+                if (!inside && !minimizeAnim.running) {
+                    minimizeAnim.start();
                 }
             }
         }
 
         // Hộp chứa (pill) nằm giữa
-        Rectangle {
+        Item {
             id: pill
             anchors.top: parent.top
-            anchors.topMargin: 5
+            anchors.topMargin: isMini ? 0 : 5
             anchors.horizontalCenter: parent.horizontalCenter
             
+            property real yOffset: 0
+            transform: Translate { y: pill.yOffset }
+            
+            Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+            
+            SequentialAnimation {
+                id: minimizeAnim
+                // 1. Thu nhỏ thành hình vuông đen nhỏ
+                ScriptAction { script: { pill.isShrinking = true } }
+                
+                // 2. Chờ thu nhỏ một chút (giảm để nhanh hơn)
+                PauseAnimation { duration: 200 }
+                
+                // 3. Trượt lên khỏi màn hình
+                NumberAnimation { 
+                    target: pill; property: "yOffset"; 
+                    to: -(pill.height + 50); 
+                    duration: 250; easing.type: Easing.InBack 
+                }
+                
+                // 4. Chuyển sang trạng thái notch (ở ngoài màn hình)
+                ScriptAction { script: { pill.isMini = true; pill.isShrinking = false } }
+                
+                // 5. Đặt vị trí chuẩn bị trượt xuống
+                PropertyAction { target: pill; property: "yOffset"; value: -pill.miniHeight - 50 }
+                PauseAnimation { duration: 20 }
+                
+                // 6. Từ từ trượt xuống
+                NumberAnimation { 
+                    target: pill; property: "yOffset"; 
+                    to: 0; 
+                    duration: 400; easing.type: Easing.OutExpo 
+                }
+            }
+            
             property bool isMini: true
+            property bool isShrinking: false
+            property real miniWidth: 100 // Chiều rộng khi thu nhỏ (notch)
+            property real miniHeight: 20 // Chiều cao khi thu nhỏ (notch)
+            
             onIsMiniChanged: {
                 if (isMini) {
                     root.isSidebarOpen = false;
@@ -118,26 +158,91 @@ ShellRoot {
             property real contentWidth: swipeView.count > 0 ? Math.max(grid1.implicitWidth, grid2.implicitWidth, layout3.implicitWidth, radial.implicitWidth, calendar.implicitWidth, testPage.implicitWidth) : 0
             property real contentHeight: swipeView.count > 0 ? Math.max(grid1.implicitHeight, grid2.implicitHeight, layout3.implicitHeight, radial.implicitHeight, calendar.implicitHeight, testPage.implicitHeight) : 0
             
-            implicitWidth: isMini ? 60 : contentWidth + 50
-            implicitHeight: isMini ? 30 : contentHeight + 60 // Căn vừa đủ kích thước lưới + PageIndicator
-            radius: 15
-            color: Qt.alpha(root.colBg, 0.6) // Làm trong suốt nền (60% opacity)
-            
-            border.color: Qt.alpha(root.colMuted, 0.5)
-            border.width: 1
-            clip: true
+            implicitWidth: isShrinking ? 60 : (isMini ? miniWidth : contentWidth + 50)
+            implicitHeight: isShrinking ? 60 : (isMini ? miniHeight : contentHeight + 60) // Căn vừa đủ kích thước lưới + PageIndicator
 
             Behavior on implicitWidth { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
             Behavior on implicitHeight { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+
+            // Nền thu nhỏ (Notch)
+            Shape {
+                id: notchBg
+                anchors.fill: parent
+                opacity: pill.isMini && !pill.isShrinking ? 1 : 0
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                
+                property real slant: 2 // Độ nghiêng (càng lớn thì cạnh càng vát chéo vào trong)
+                property real flare: 18 // Độ cong của góc
+                
+                ShapePath {
+                    fillGradient: RadialGradient {
+                        centerX: notchBg.width / 2; centerY: 0
+                        centerRadius: notchBg.width / 4
+                        focalX: notchBg.width / 2; focalY: 0
+                        GradientStop { position: 0.0; color: "#260b41" }
+                        GradientStop { position: 1.0; color: "#000000" }
+                    }
+                    strokeColor: Qt.alpha(root.colMuted, 0.5)
+                    strokeWidth: 1
+                    
+                    startX: -notchBg.flare; startY: 0
+                    
+                    // Cạnh trái uốn cong chữ S (từ mép trên xuống đáy)
+                    PathCubic { 
+                        x: notchBg.slant + notchBg.flare; y: notchBg.height
+                        control1X: 0; control1Y: 0
+                        control2X: notchBg.slant; control2Y: notchBg.height
+                    }
+                    
+                    // Đường thẳng đáy
+                    PathLine { x: notchBg.width - notchBg.slant - notchBg.flare; y: notchBg.height }
+                    
+                    // Cạnh phải uốn cong chữ S (từ đáy lên mép trên)
+                    PathCubic {
+                        x: notchBg.width + notchBg.flare; y: 0
+                        control1X: notchBg.width - notchBg.slant; control1Y: notchBg.height
+                        control2X: notchBg.width; control2Y: 0
+                    }
+                    
+                    // Đường thẳng mép trên (đóng hình)
+                    PathLine { x: -notchBg.flare; y: 0 }
+                }
+            }
+
+            // Nền mở rộng (Floating Pill)
+            Shape {
+                id: pillBg
+                anchors.fill: parent
+                opacity: pill.isMini && !pill.isShrinking ? 0 : 1
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                
+                ShapePath {
+                    fillColor: Qt.alpha("#000000", 0.8)
+                    strokeColor: Qt.alpha(root.colMuted, 0.5)
+                    strokeWidth: 1
+                    
+                    startX: 15; startY: 0
+                    PathLine { x: pillBg.width - 15; y: 0 }
+                    PathQuad { x: pillBg.width; y: 15; controlX: pillBg.width; controlY: 0 }
+                    PathLine { x: pillBg.width; y: pillBg.height - 15 }
+                    PathQuad { x: pillBg.width - 15; y: pillBg.height; controlX: pillBg.width; controlY: pillBg.height }
+                    PathLine { x: 15; y: pillBg.height }
+                    PathQuad { x: 0; y: pillBg.height - 15; controlX: 0; controlY: pillBg.height }
+                    PathLine { x: 0; y: 15 }
+                    PathQuad { x: 15; y: 0; controlX: 0; controlY: 0 }
+                }
+            }
 
             // Icon hiển thị khi thu nhỏ
             Text {
                 id: clockExpanded
                 anchors.centerIn: parent
                 
-                color: root.colCyan
-                font { family: root.fontFamily; pixelSize: 14 }
-                opacity: pill.isMini ? 1 : 0
+                color: "#ffffff"
+                font { family: root.fontFamily; pixelSize: 12; bold: true }
+                opacity: pill.isMini && !pill.isShrinking ? 1 : 0
                 visible: opacity > 0
                 Behavior on opacity { NumberAnimation { duration: 150 } }
                 Timer {
@@ -165,9 +270,101 @@ ShellRoot {
                 anchors.rightMargin: 25
                 clip: true
                 
-                opacity: pill.isMini ? 0 : 1
+                opacity: pill.isMini || pill.isShrinking ? 0 : 1
                 visible: opacity > 0
                 Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                Item {
+                    ScrollView {
+                        id: layout3
+                        anchors.centerIn: parent
+                        implicitWidth: 240
+                        implicitHeight: Math.min(contentCol.implicitHeight, 200)
+                        width: implicitWidth
+                        height: implicitHeight
+                        clip: true
+                        
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                        
+                        ColumnLayout {
+                            id: contentCol
+                            width: layout3.width
+                            spacing: 12
+
+                            ButtonModule {
+                                text: root.isSidebarOpen ? "Đóng Sidebar" : "Mở Sidebar"
+                                onClicked: root.isSidebarOpen = !root.isSidebarOpen
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.bottomMargin: 8
+                            }
+
+                            Text {
+                                text: "To-Do List"
+                                color: root.colCyan
+                                font { family: root.fontFamily; pixelSize: root.fontSize; bold: true }
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.bottomMargin: 8
+                            }
+
+                            TaskModule {
+                                text: "Uống nước"
+                                isDone: true
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Check email"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Viết báo cáo"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Code tính năng mới"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Họp nhóm lúc 3h"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                            
+                            TaskModule {
+                                text: "Tập thể dục"
+                                colorText: root.colFg
+                                colorDone: root.colMuted
+                                colorAccent: root.colCyan
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                            }
+                        }
+                    }
+                }
+
                 Item {
                     RadialMenuModule {
                         id: radial
@@ -270,97 +467,6 @@ ShellRoot {
                 }
                 
                 Item {
-                    ScrollView {
-                        id: layout3
-                        anchors.centerIn: parent
-                        implicitWidth: 240
-                        implicitHeight: Math.min(contentCol.implicitHeight, 200)
-                        width: implicitWidth
-                        height: implicitHeight
-                        clip: true
-                        
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
-                        
-                        ColumnLayout {
-                            id: contentCol
-                            width: layout3.width
-                            spacing: 12
-
-                            ButtonModule {
-                                text: root.isSidebarOpen ? "Đóng Sidebar" : "Mở Sidebar"
-                                onClicked: root.isSidebarOpen = !root.isSidebarOpen
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.bottomMargin: 8
-                            }
-
-                            Text {
-                                text: "To-Do List"
-                                color: root.colCyan
-                                font { family: root.fontFamily; pixelSize: root.fontSize; bold: true }
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.bottomMargin: 8
-                            }
-
-                            TaskModule {
-                                text: "Uống nước"
-                                isDone: true
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Check email"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Viết báo cáo"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Code tính năng mới"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Họp nhóm lúc 3h"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Tập thể dục"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                        }
-                    }
-                }
-                
-                Item {
                     CalendarModule {
                         id: calendar
                         anchors.centerIn: parent
@@ -415,7 +521,7 @@ ShellRoot {
                 anchors.horizontalCenter: parent.horizontalCenter
                 count: swipeView.count
                 currentIndex: swipeView.currentIndex
-                opacity: pill.isMini ? 0 : 1
+                opacity: pill.isMini || pill.isShrinking ? 0 : 1
                 visible: opacity > 0
                 
                 delegate: Rectangle {
@@ -429,91 +535,11 @@ ShellRoot {
         }
     }
     
-    // Sidebar trượt từ phải sang trái
-    PanelWindow {
-        id: sidebarWindow
-        anchors.right: true
-        
-        implicitWidth:60
-        implicitHeight: 120 // Cửa sổ nhỏ gọn
-        color: "transparent" // Trong suốt toàn bộ cửa sổ để không che màn hình
-        
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.exclusionMode: ExclusionMode.Ignore
-        
-        Region { id: emptyRegion }
-        // Chỉ nhận click khi sidebar đang mở và ở trong vùng của sidebar
-        mask: root.isSidebarOpen ? sidebarRegion : emptyRegion
-        
-        Region {
-            id: sidebarRegion
-            x: Math.floor(sidebarRect.x)
-            y: Math.floor(sidebarRect.y)
-            width: Math.ceil(sidebarRect.width)
-            height: Math.ceil(sidebarRect.height)
-        }
-        
-        Rectangle {
-            id: sidebarRect
-            width: 300
-            height: parent.height
-            // Đẩy ra ngoài (x=300) nếu đóng, kéo vào (x=0) nếu mở
-            x: root.isSidebarOpen ? 0 : 300
-            opacity: root.isSidebarOpen ? 1 : 0
-            
-            Behavior on x { 
-                NumberAnimation { 
-                    // Lúc mở thì chạy 500ms mượt mà (OutExpo), lúc đóng thì chạy 300ms dứt khoát (InExpo)
-                    duration: root.isSidebarOpen ? 500 : 300 
-                    easing.type: root.isSidebarOpen ? Easing.OutExpo : Easing.InExpo
-                } 
-            }
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: root.isSidebarOpen ? 400 : 250
-                }
-            }
-            
-            color: Qt.alpha(root.colBg, 0.9)
-            border.color: Qt.alpha(root.colMuted, 0.5)
-            border.width: 1
-            radius: 15
-            
-            // Xóa bo góc bên phải để dính chặt vào cạnh màn hình
-            Rectangle {
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 15
-                color: Qt.alpha(root.colBg, 0.9)
-            }
-            
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 20
-                spacing: 16
-                
-                Text {
-                    text: "Sidebar Trượt"
-                    color: root.colCyan
-                    font.family: root.fontFamily
-                    font.pixelSize: root.fontSize + 4
-                    font.bold: true
-                    Layout.alignment: Qt.AlignHCenter
-                }
-                
-                Text {
-                    text: "Bạn có thể để thông báo,\nnhạc, lịch ở đây!"
-                    color: root.colFg
-                    font.family: root.fontFamily
-                    font.pixelSize: root.fontSize
-                    horizontalAlignment: Text.AlignHCenter
-                    Layout.alignment: Qt.AlignHCenter
-                }
-                
-                Item { Layout.fillHeight: true } // Đẩy nội dung lên trên
-            }
-        }
+    // Sidebar trượt từ phải sang trái (nay là Đĩa quay Radio)
+    RotarySidebar {
+        isOpen: root.isSidebarOpen
     }
+
+    
     
 } // Đóng ShellRoot
