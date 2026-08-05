@@ -535,10 +535,9 @@ ShellRoot {
         }
     }
     
-    // Sidebar trượt từ phải sang trái (nay là Đĩa quay Radio)
-    RotarySidebar {
-        isOpen: root.isSidebarOpen
-    }
+    // Các OSD hiển thị dưới dạng Đĩa quay Radio
+    VolumeOsdWindow {}
+    BrightnessOsdWindow {}
 
     
     
