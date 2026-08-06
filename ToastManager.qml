@@ -17,20 +17,23 @@ PanelWindow {
     
     anchors.top: true
     anchors.right: true
+    anchors.bottom: true
     
     margins.right: 0
     margins.top: 0
     
     implicitWidth: 350
-    // Chiều cao tự động ôm sát nội dung (cộng thêm chút lề) để không chặn click của vùng khác
-    implicitHeight: Math.max(1, toastListView.contentHeight + 20)
     color: "transparent"
     
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
     
-    // Gỡ bỏ mask (vốn làm window này bị 'thủng' xuyên qua, không nhận được click)
-    // mask: Region {}
+    // Sử dụng mask để chỉ nhận click ở khu vực có thông báo thực sự
+    // Các phần trong suốt bên dưới sẽ không chặn click của người dùng
+    mask: Region {
+        width: 350
+        height: toastListView.contentHeight + 20
+    }
     
     ListModel {
         id: toastModel
@@ -97,17 +100,18 @@ PanelWindow {
         topMargin: 20
         
         add: Transition {
-            NumberAnimation { property: "y"; from: -100; duration: 400; easing.type: Easing.OutBack }
+            NumberAnimation { property: "y"; from: -200; duration: 400; easing.type: Easing.OutQuint }
             NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 300 }
         }
         
         remove: Transition {
-            NumberAnimation { property: "x"; to: toastWindow.width + 50; duration: 300; easing.type: Easing.InExpo }
-            NumberAnimation { property: "opacity"; to: 0; duration: 300 }
+            // Trượt sang phải màn hình (x = 400) để biến mất
+            NumberAnimation { property: "x"; to: 400; duration: 400; easing.type: Easing.InQuint }
+            NumberAnimation { property: "opacity"; to: 0; duration: 400 }
         }
         
         displaced: Transition {
-            NumberAnimation { properties: "x,y"; duration: 300; easing.type: Easing.OutBack }
+            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutQuint }
         }
         
         delegate: ToastModule {

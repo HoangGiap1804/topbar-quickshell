@@ -147,7 +147,29 @@ ShellRoot {
             
             property bool isMini: true
             property bool isShrinking: false
-            property real miniWidth: 100 // Chiều rộng khi thu nhỏ (notch)
+            property bool showingWorkspace: false
+            property int currentWorkspaceId: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
+            property bool _wsInitialized: false
+            
+            onCurrentWorkspaceIdChanged: {
+                if (!_wsInitialized) {
+                    _wsInitialized = true;
+                    return;
+                }
+                // Chỉ hiển thị OSD workspace nếu đang ở chế độ notch
+                if (isMini && !isShrinking) {
+                    showingWorkspace = true;
+                    wsTimer.restart();
+                }
+            }
+            
+            Timer {
+                id: wsTimer
+                interval: 1500
+                onTriggered: pill.showingWorkspace = false
+            }
+
+            property real miniWidth: showingWorkspace ? 240 : 100 // Mở rộng notch khi show workspace
             property real miniHeight: 20 // Chiều cao khi thu nhỏ (notch)
             
             onIsMiniChanged: {
@@ -239,17 +261,57 @@ ShellRoot {
             Text {
                 id: clockExpanded
                 anchors.centerIn: parent
+                anchors.verticalCenterOffset: (pill.isMini && !pill.isShrinking && pill.showingWorkspace) ? -20 : 0
                 
                 color: "#ffffff"
                 font { family: root.fontFamily; pixelSize: 12; bold: true }
-                opacity: pill.isMini && !pill.isShrinking ? 1 : 0
+                opacity: (pill.isMini && !pill.isShrinking && !pill.showingWorkspace) ? 1 : 0
                 visible: opacity > 0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
+                
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                
                 Timer {
                     interval: 1000
                     running: true
                     repeat: true
                     onTriggered: clockExpanded.text = Qt.formatDateTime(new Date(), "HH:mm")
+                }
+            }
+
+            // Workspace dots
+            Row {
+                id: wsDots
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: (pill.isMini && !pill.isShrinking && pill.showingWorkspace) ? 0 : -20
+                spacing: 12
+                
+                opacity: (pill.isMini && !pill.isShrinking && pill.showingWorkspace) ? 1 : 0
+                visible: opacity > 0
+                
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                
+                Repeater {
+                    model: 9
+                    Rectangle {
+                        property int wsId: index + 1
+                        property bool isActive: wsId === pill.currentWorkspaceId
+                        property bool hasWindows: Hyprland.workspaces.values.find(w => w.id === wsId) !== undefined
+                        
+                        width: isActive ? 28 : 10
+                        height: 10
+                        radius: height / 2
+                        
+                        color: (isActive || hasWindows) ? "#ffffff" : "#444b6a"
+                        
+                        Behavior on width {
+                            NumberAnimation { duration: 300; easing.type: Easing.OutExpo }
+                        }
+                        Behavior on color {
+                            ColorAnimation { duration: 300 }
+                        }
+                    }
                 }
             }
 
@@ -273,242 +335,32 @@ ShellRoot {
                 opacity: pill.isMini || pill.isShrinking ? 0 : 1
                 visible: opacity > 0
                 Behavior on opacity { NumberAnimation { duration: 150 } }
-
-                Item {
-                    ScrollView {
-                        id: layout3
-                        anchors.centerIn: parent
-                        implicitWidth: 240
-                        implicitHeight: Math.min(contentCol.implicitHeight, 200)
-                        width: implicitWidth
-                        height: implicitHeight
-                        clip: true
-                        
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
-                        
-                        ColumnLayout {
-                            id: contentCol
-                            width: layout3.width
-                            spacing: 12
-
-                            ButtonModule {
-                                text: root.isSidebarOpen ? "Đóng Sidebar" : "Mở Sidebar"
-                                onClicked: root.isSidebarOpen = !root.isSidebarOpen
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.bottomMargin: 8
-                            }
-
-                            Text {
-                                text: "To-Do List"
-                                color: root.colCyan
-                                font { family: root.fontFamily; pixelSize: root.fontSize; bold: true }
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.bottomMargin: 8
-                            }
-
-                            TaskModule {
-                                text: "Uống nước"
-                                isDone: true
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Check email"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Viết báo cáo"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Code tính năng mới"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Họp nhóm lúc 3h"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                            
-                            TaskModule {
-                                text: "Tập thể dục"
-                                colorText: root.colFg
-                                colorDone: root.colMuted
-                                colorAccent: root.colCyan
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                            }
-                        }
-                    }
-                }
-
-                Item {
-                    RadialMenuModule {
-                        id: radial
-                        anchors.centerIn: parent
-                    }
-                }
-                Item {
-                    GridLayout {
-                        id: grid1
-                        anchors.centerIn: parent
-                        columns: 2
-                        rowSpacing: 16
-                        columnSpacing: 32
-
-                        // Hàng 1: Workspaces chiếm cả 2 cột
-                        Workspaces {
-                            colCyan: root.colCyan
-                            colBlue: root.colBlue
-                            colMuted: root.colMuted
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize
-                        }
-
-                        // Hàng 2: CPU và Memory (chia 2 cột)
-                        CpuModule {
-                            usage: root.cpuUsage
-                            colorText: root.colYellow
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize
-                        }
-
-                        MemoryModule {
-                            usage: root.memUsage
-                            colorText: root.colCyan
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize
-                        }
-
-                        // Hàng 3: Clock chiếm 2 cột
-                        ClockModule {
-                            colorText: root.colBlue
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize
-                        }
-                    }
-                }
-                
                 Item {
                     GridLayout {
                         id: grid2
                         anchors.centerIn: parent
-                        columns: 2
+                        columns: 1
                         rowSpacing: 16
-                        columnSpacing: 32
+                        columnSpacing: 16
                         
-                        ToggleButtonModule {
-                            text: "󰤨  Wi-Fi"
+                        TileToggleModule {
+                            text: "Wi-Fi"
+                            iconText: "󰤨"
                             isOn: true
-                            colorActive: root.colCyan
-                            colorInactive: root.colMuted
-                            colorHover: root.colBlue
-                            colorText: root.colBg
-                            colorTextOff: root.colFg
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize - 2
-                        }
-                        
-                        ToggleButtonModule {
-                            text: "󰂯  Bluetooth"
-                            isOn: false
                             colorActive: root.colBlue
-                            colorInactive: root.colMuted
-                            colorHover: root.colCyan
-                            colorText: root.colBg
-                            colorTextOff: root.colFg
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize - 2
-                        }
-
-                        SliderModule {
-                            iconText: ""
-                            value: 0.7
-                            colorAccent: root.colYellow
-                            colorMuted: root.colMuted
-                            colorFg: root.colFg
                             fontFamily: root.fontFamily
                             fontSize: root.fontSize
+                            onExpandClicked: wifiWindow.isOpen = !wifiWindow.isOpen
                         }
-
-                        SliderModule {
-                            iconText: "󰃠"
-                            value: 0.4
-                            colorAccent: root.colCyan
-                            colorMuted: root.colMuted
-                            colorFg: root.colFg
+                        
+                        TileToggleModule {
+                            text: "Bluetooth"
+                            iconText: "󰂯"
+                            isOn: false
+                            colorActive: root.colCyan
                             fontFamily: root.fontFamily
                             fontSize: root.fontSize
-                        }
-                    }
-                }
-                
-                Item {
-                    CalendarModule {
-                        id: calendar
-                        anchors.centerIn: parent
-                        colorBg: root.colBg
-                        colorFg: root.colFg
-                        colorMuted: root.colMuted
-                        colorAccent: root.colCyan
-                        fontFamily: root.fontFamily
-                    }
-                }
-                
-                Item {
-                    implicitWidth: testPage.implicitWidth
-                    implicitHeight: testPage.implicitHeight
-                    
-                    ColumnLayout {
-                        id: testPage
-                        anchors.centerIn: parent
-                        spacing: 16
-                        
-                        Text {
-                            text: "Test Toast Notification"
-                            color: root.colCyan
-                            font.family: root.fontFamily
-                            font.pixelSize: root.fontSize + 2
-                            font.bold: true
-                            Layout.alignment: Qt.AlignHCenter
-                        }
-                        
-                        ButtonModule {
-                            text: "Thành công (Success)"
-                            onClicked: root.showToast("Dữ liệu đã được lưu thành dfasd fasdfasdfasdf asdf sad fasfd asdf asdf asdf asdf asd fasdfasdfcông!", "success")
-                        }
-                        
-                        ButtonModule {
-                            text: "Cảnh báo (Warning)"
-                            onClicked: root.showToast("Pin yếu! Vui lòng cắm sạc.", "warning")
-                        }
-                        
-                        ButtonModule {
-                            text: "Thông thường (Info)"
-                            onClicked: root.showToast("Đã có bản cập nhật hệ thống mới.", "info")
+                            onExpandClicked: bluetoothWindow.isOpen = !bluetoothWindow.isOpen
                         }
                     }
                 }
@@ -538,7 +390,5 @@ ShellRoot {
     // Các OSD hiển thị dưới dạng Đĩa quay Radio
     VolumeOsdWindow {}
     BrightnessOsdWindow {}
-
-    
     
 } // Đóng ShellRoot

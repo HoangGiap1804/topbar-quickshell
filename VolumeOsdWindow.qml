@@ -54,31 +54,29 @@ PanelWindow {
     Region { id: emptyRegion }
     Region {
         id: windowRegion
-        x: (parent.width * 0.75) - (280 / 2) - 30
+        x: (parent.width * 0.75) - (320 / 2)
         y: 0
-        width: 380 // 280 + 100
-        height: 140
+        width: 320
+        height: 100
     }
     mask: isOpen ? windowRegion : emptyRegion
     
     Process { id: volumeCommand }
 
-    RotaryDialWidget {
+    LinearDialWidget {
         id: dialWidget
-        anchors.fill: parent
+        x: (parent.width * 0.75) - (width / 2)
         isOpen: volumeWindow.isOpen
-        labelText: "VOLUME"
+        titleText: "VOLUME"
         accentColor: "#7a42ff"
         currentValue: volumeWindow.vol
         
-        onScrolled: (newVal) => {
+        onValueChanged: (newVal) => {
             volumeWindow.internalChange = true
             resetTimer.restart()
             
-            // Cập nhật giá trị hiển thị lập tức
             dialWidget.currentValue = newVal
             
-            // Sync to system using wpctl
             volumeCommand.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (newVal / 100.0).toFixed(2)]
             volumeCommand.running = true
             
