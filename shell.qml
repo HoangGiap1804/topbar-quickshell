@@ -71,9 +71,10 @@ ShellRoot {
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-pill"
+        WlrLayershell.keyboardFocus: pill.showLauncher ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         
         // Cấu hình vùng nhận diện click (Mask)
-        mask: pill.isMini ? pillRegion : fullRegion
+        mask: (pill.isMini && !pill.showLauncher) ? pillRegion : fullRegion
         
         Region {
             id: pillRegion
@@ -89,15 +90,21 @@ ShellRoot {
             height: overlay.height
         }
         
-        // Bắt click toàn màn hình (chỉ kích hoạt khi pill mở rộng)
+        // Bắt click toàn màn hình (chỉ kích hoạt khi pill mở rộng hoặc launcher active)
         MouseArea {
             anchors.fill: parent
-            enabled: !pill.isMini
+            enabled: !pill.isMini || pill.showLauncher
             onPressed: (mouse) => {
                 var inside = mouse.x >= pillRegion.x && mouse.x <= pillRegion.x + pillRegion.width
                           && mouse.y >= pillRegion.y && mouse.y <= pillRegion.y + pillRegion.height;
-                // Chỉ thu nhỏ khi click ra ngoài vùng của Pill
-                if (!inside && !minimizeAnim.running) {
+                if (pill.showLauncher && pill.isMini) {
+                    // Đóng launcher khi click ra ngoài
+                    if (!inside) {
+                        pill.showLauncher = false;
+                        launcherSearchInput.text = "";
+                        appLauncherItem.filteredApps = [];
+                    }
+                } else if (!inside && !minimizeAnim.running) {
                     minimizeAnim.start();
                 }
             }
@@ -117,27 +124,32 @@ ShellRoot {
             
             SequentialAnimation {
                 id: minimizeAnim
-                // 1. Thu nhỏ thành hình vuông đen nhỏ
+                
+                // 1. Fade out nội dung trước
+                ScriptAction { script: { pill.isFadingOut = true } }
+                PauseAnimation { duration: 150 } // Chờ dashboard fade out xong
+                
+                // 2. Thu nhỏ thành hình vuông đen nhỏ
                 ScriptAction { script: { pill.isShrinking = true } }
                 
-                // 2. Chờ thu nhỏ một chút (giảm để nhanh hơn)
+                // 3. Chờ thu nhỏ
                 PauseAnimation { duration: 200 }
                 
-                // 3. Trượt lên khỏi màn hình
+                // 4. Trượt lên khỏi màn hình
                 NumberAnimation { 
                     target: pill; property: "yOffset"; 
                     to: -(pill.height + 50); 
                     duration: 250; easing.type: Easing.InBack 
                 }
                 
-                // 4. Chuyển sang trạng thái notch (ở ngoài màn hình)
-                ScriptAction { script: { pill.isMini = true; pill.isShrinking = false } }
+                // 5. Chuyển sang trạng thái notch
+                ScriptAction { script: { pill.isMini = true; pill.isShrinking = false; pill.isFadingOut = false; pill.showLauncher = false } }
                 
-                // 5. Đặt vị trí chuẩn bị trượt xuống
+                // 6. Đặt vị trí chuẩn bị trượt xuống
                 PropertyAction { target: pill; property: "yOffset"; value: -pill.miniHeight - 50 }
                 PauseAnimation { duration: 20 }
                 
-                // 6. Từ từ trượt xuống
+                // 7. Từ từ trượt xuống
                 NumberAnimation { 
                     target: pill; property: "yOffset"; 
                     to: 0; 
@@ -145,8 +157,18 @@ ShellRoot {
                 }
             }
             
+            SequentialAnimation {
+                id: expandAnim
+                ScriptAction { script: { pill.isExpanding = true; pill.isMini = false } }
+                PauseAnimation { duration: 300 }
+                ScriptAction { script: { pill.isExpanding = false } }
+            }
+
             property bool isMini: true
             property bool isShrinking: false
+            property bool isFadingOut: false
+            property bool isExpanding: false
+            property bool showLauncher: false
             property bool showingWorkspace: false
             property int currentWorkspaceId: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
             property bool _wsInitialized: false
@@ -169,7 +191,7 @@ ShellRoot {
                 onTriggered: pill.showingWorkspace = false
             }
 
-            property real miniWidth: showingWorkspace ? 240 : 100 // Mở rộng notch khi show workspace
+            property real miniWidth: pill.showLauncher ? 300 : (showingWorkspace ? 240 : 100)
             property real miniHeight: 20 // Chiều cao khi thu nhỏ (notch)
             
             onIsMiniChanged: {
@@ -177,11 +199,11 @@ ShellRoot {
                     root.isSidebarOpen = false;
                 }
             }
-            property real contentWidth: swipeView.count > 0 ? Math.max(grid1.implicitWidth, grid2.implicitWidth, layout3.implicitWidth, radial.implicitWidth, calendar.implicitWidth, testPage.implicitWidth) : 0
-            property real contentHeight: swipeView.count > 0 ? Math.max(grid1.implicitHeight, grid2.implicitHeight, layout3.implicitHeight, radial.implicitHeight, calendar.implicitHeight, testPage.implicitHeight) : 0
+            property real contentWidth:  typeof bentoDashboard !== "undefined" ? bentoDashboard.implicitWidth  : 0
+            property real contentHeight: typeof bentoDashboard !== "undefined" ? bentoDashboard.implicitHeight : 0
             
-            implicitWidth: isShrinking ? 60 : (isMini ? miniWidth : contentWidth + 50)
-            implicitHeight: isShrinking ? 60 : (isMini ? miniHeight : contentHeight + 60) // Căn vừa đủ kích thước lưới + PageIndicator
+            implicitWidth: isShrinking ? 40 : (isMini ? miniWidth : contentWidth + 50)
+            implicitHeight: isShrinking ? 40 : (isMini ? miniHeight : contentHeight + 60) // Căn vừa đủ kích thước lưới + PageIndicator
 
             Behavior on implicitWidth { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
             Behavior on implicitHeight { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
@@ -232,13 +254,24 @@ ShellRoot {
                 }
             }
 
+            // Nền khối cầu khi thu nhỏ
+            Rectangle {
+                id: shrinkBg
+                anchors.fill: parent
+                radius: width / 2
+                color: "#000000"
+                opacity: pill.isShrinking ? 1 : 0
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: 150 } }
+            }
+
             // Nền mở rộng (Floating Pill)
             Shape {
                 id: pillBg
                 anchors.fill: parent
-                opacity: pill.isMini && !pill.isShrinking ? 0 : 1
+                opacity: (pill.isMini && !pill.isShrinking) || pill.isShrinking ? 0 : 1
                 visible: opacity > 0
-                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutExpo } }
                 
                 ShapePath {
                     fillColor: Qt.alpha("#000000", 0.8)
@@ -257,15 +290,22 @@ ShellRoot {
                 }
             }
 
-            // Icon hiển thị khi thu nhỏ
+            // Icon đồng hồ khi thu nhỏ
             Text {
                 id: clockExpanded
                 anchors.centerIn: parent
-                anchors.verticalCenterOffset: (pill.isMini && !pill.isShrinking && pill.showingWorkspace) ? -20 : 0
+                anchors.verticalCenterOffset: {
+                    if (pill.isMini && !pill.isShrinking) {
+                        if (pill.showingWorkspace) return -20
+                        if (pill.showLauncher) return -20
+                        return 0
+                    }
+                    return 0
+                }
                 
                 color: "#ffffff"
                 font { family: root.fontFamily; pixelSize: 12; bold: true }
-                opacity: (pill.isMini && !pill.isShrinking && !pill.showingWorkspace) ? 1 : 0
+                opacity: (pill.isMini && !pill.isShrinking && !pill.showingWorkspace && !pill.showLauncher) ? 1 : 0
                 visible: opacity > 0
                 
                 Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
@@ -279,6 +319,43 @@ ShellRoot {
                 }
             }
 
+            // Search input (hiện khi launcher active thay cho đồng hồ)
+            TextInput {
+                id: launcherSearchInput
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: (pill.isMini && pill.showLauncher) ? 0 : -20
+                width: pill.miniWidth - 24
+                
+                opacity: (pill.isMini && pill.showLauncher) ? 1 : 0
+                visible: opacity > 0
+                
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                
+                color: "#c0caf5"
+                font.family: root.fontFamily; font.pixelSize: 12; font.bold: true
+                horizontalAlignment: TextInput.AlignHCenter
+
+                Text {
+                    anchors.fill: parent
+                    text: "Search apps..."
+                    color: Qt.rgba(1,1,1,0.30)
+                    font: launcherSearchInput.font
+                    visible: launcherSearchInput.text.length === 0
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                onTextChanged: appLauncherItem.filterApps(text)
+                Keys.onEscapePressed: {
+                    pill.showLauncher = false
+                    text = ""
+                    appLauncherItem.filteredApps = []
+                }
+                Keys.onReturnPressed: appLauncherItem.launchSelected()
+                Keys.onUpPressed:   { if (appLauncherItem.selectedIndex > 0) appLauncherItem.selectedIndex-- }
+                Keys.onDownPressed: { if (appLauncherItem.selectedIndex < appLauncherItem.filteredApps.length - 1) appLauncherItem.selectedIndex++ }
+            }
+
             // Workspace dots
             Row {
                 id: wsDots
@@ -286,7 +363,7 @@ ShellRoot {
                 anchors.verticalCenterOffset: (pill.isMini && !pill.isShrinking && pill.showingWorkspace) ? 0 : -20
                 spacing: 12
                 
-                opacity: (pill.isMini && !pill.isShrinking && pill.showingWorkspace) ? 1 : 0
+                opacity: (pill.isMini && !pill.isShrinking && pill.showingWorkspace && !pill.showLauncher) ? 1 : 0
                 visible: opacity > 0
                 
                 Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
@@ -315,78 +392,85 @@ ShellRoot {
                 }
             }
 
-            // Xử lý click để phóng to (vô hiệu hóa khi đã phóng to, mọi click khác được overlay xử lý)
+            // Xử lý click để phóng to (chỉ khi pill mini VÀ không phải launcher)
             MouseArea {
                 anchors.fill: parent
-                cursorShape: pill.isMini ? Qt.PointingHandCursor : Qt.ArrowCursor
-                enabled: pill.isMini
-                onClicked: { pill.isMini = false }
+                cursorShape: (pill.isMini && !pill.showLauncher) ? Qt.PointingHandCursor : Qt.ArrowCursor
+                enabled: pill.isMini && !pill.showLauncher
+                onClicked: { if (!expandAnim.running) expandAnim.start() }
             }
 
-            SwipeView {
-                id: swipeView
-                anchors.fill: parent
-                anchors.topMargin: 30
-                anchors.bottomMargin: 15
-                anchors.leftMargin: 25
-                anchors.rightMargin: 25
-                clip: true
+            BentoDashboard {
+                id: bentoDashboard
+                anchors.centerIn: parent
                 
-                opacity: pill.isMini || pill.isShrinking ? 0 : 1
+                opacity: (pill.isMini || pill.isShrinking || pill.isFadingOut || pill.isExpanding) ? 0 : 1
                 visible: opacity > 0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
-                Item {
-                    GridLayout {
-                        id: grid2
-                        anchors.centerIn: parent
-                        columns: 1
-                        rowSpacing: 16
-                        columnSpacing: 16
-                        
-                        TileToggleModule {
-                            text: "Wi-Fi"
-                            iconText: "󰤨"
-                            isOn: true
-                            colorActive: root.colBlue
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize
-                            onExpandClicked: wifiWindow.isOpen = !wifiWindow.isOpen
-                        }
-                        
-                        TileToggleModule {
-                            text: "Bluetooth"
-                            iconText: "󰂯"
-                            isOn: false
-                            colorActive: root.colCyan
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize
-                            onExpandClicked: bluetoothWindow.isOpen = !bluetoothWindow.isOpen
-                        }
-                    }
-                }
-
+                Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                
+                // Pass theme properties
+                colBg: root.colBg
+                colFg: root.colFg
+                colCyan: root.colCyan
+                colBlue: root.colBlue
+                colYellow: root.colYellow
+                colMuted: root.colMuted
+                fontFamily: root.fontFamily
             }
+        }
 
-            PageIndicator {
-                anchors.top: parent.top
-                anchors.topMargin: 8
-                anchors.horizontalCenter: parent.horizontalCenter
-                count: swipeView.count
-                currentIndex: swipeView.currentIndex
-                opacity: pill.isMini || pill.isShrinking ? 0 : 1
-                visible: opacity > 0
-                
-                delegate: Rectangle {
-                    implicitWidth: 8
-                    implicitHeight: 8
-                    radius: 4
-                    color: index === swipeView.currentIndex ? root.colCyan : root.colMuted
-                    Behavior on color { ColorAnimation { duration: 200 } }
-                }
+        // ── App Launcher cards (bên dưới pill notch) ─────────────────────────
+        AppLauncher {
+            id: appLauncherItem
+            anchors.top: parent.top
+            anchors.topMargin: pill.miniHeight + pill.yOffset + 10
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            opacity: pill.showLauncher ? 1 : 0
+            visible: opacity > 0
+            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
+
+            onCloseRequested: {
+                pill.showLauncher = false
+                launcherSearchInput.text = ""
+                filteredApps = []
             }
         }
     }
     
+    // ── FIFO trigger cho App Launcher ──────────────────────────────────────────
+    // Hyprland: bind = SUPER, SPACE, exec, echo open > /tmp/.qs-launcher.fifo
+    Process {
+        id: launcherFifo
+        command: ["bash", "-c",
+            "mkfifo /tmp/.qs-launcher.fifo 2>/dev/null; " +
+            "read line < /tmp/.qs-launcher.fifo && echo \"$line\""
+        ]
+        running: true
+        onRunningChanged: { if (!running) Qt.callLater(function() { running = true }) }
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (this.text.trim() === "") return
+                if (pill.showLauncher) {
+                    // Đóng launcher
+                    pill.showLauncher = false
+                    launcherSearchInput.text = ""
+                    appLauncherItem.filteredApps = []
+                } else {
+                    // Nếu pill đang mở → thu nhỏ trước
+                    if (!pill.isMini) minimizeAnim.start()
+                    // Mở launcher (pill ở trạng thái mini, rộng ra, hiện search)
+                    pill.showLauncher = true
+                    appLauncherItem.filterApps("")
+                    Qt.callLater(function() {
+                        launcherSearchInput.text = ""
+                        launcherSearchInput.forceActiveFocus()
+                    })
+                }
+            }
+        }
+    }
+
     // Các OSD hiển thị dưới dạng Đĩa quay Radio
     VolumeOsdWindow {}
     BrightnessOsdWindow {}

@@ -2,7 +2,6 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import QtQuick
-import "ChillPill-Shell/qml" as ChillPill
 
 PanelWindow {
     id: brightnessWindow
@@ -21,7 +20,7 @@ PanelWindow {
     property bool isOpen: false
     property bool internalChange: false
     
-    ChillPill.Brightness {
+    Brightness {
         id: brightnessTracker
         visible: false
         onBrightnessUpdated: {

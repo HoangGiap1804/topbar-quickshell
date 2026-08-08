@@ -5,7 +5,7 @@ Rectangle {
     id: rootCal
     color: "transparent"
     implicitWidth: 260
-    implicitHeight: rootCal.activeTab === 0 ? 280 : 330 // Tự động kéo dài ra một chút khi xem full tháng
+    implicitHeight: 260
     
     Behavior on implicitHeight { NumberAnimation { duration: 200 } }
     
@@ -15,137 +15,113 @@ Rectangle {
     property color colorMuted: "#a9b1d6"
     property color colorAccent: "#0db9d7"
     property string fontFamily: "JetBrainsMono Nerd Font"
-    property int activeTab: 0 // 0: Weekly, 1: Monthly
+    
+    property var todayDate: new Date()
+    property var currentDate: new Date()
+    property string monthName: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][currentDate.getMonth()]
+    property int currentDay: currentDate.getDate()
+    
+    property var monthlyDates: []
+    
+    function updateCalendar() {
+        var tempMonth = [];
+        var firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        var startOffset = firstDayOfMonth.getDay();
+        var startDate = new Date(firstDayOfMonth);
+        startDate.setDate(firstDayOfMonth.getDate() - startOffset);
+        
+        for (var j = 0; j < 42; j++) {
+            var md = new Date(startDate);
+            md.setDate(startDate.getDate() + j);
+            tempMonth.push({ day: md.getDate(), isCurrentMonth: md.getMonth() === currentDate.getMonth(), isToday: md.toDateString() === todayDate.toDateString() });
+        }
+        monthlyDates = tempMonth;
+    }
+    
+    Component.onCompleted: updateCalendar()
+    
+    Timer {
+        interval: 60000
+        running: true
+        repeat: true
+        onTriggered: {
+            var now = new Date();
+            if (now.getDate() !== todayDate.getDate() || now.getMonth() !== todayDate.getMonth()) {
+                todayDate = now;
+                updateCalendar();
+            }
+        }
+    }
     
     ColumnLayout {
         anchors.fill: parent
-        spacing: 16
+        spacing: 8
         
-        // 1. Header: Weekly / Monthly + Settings
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-            
-            // Segmented Button
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
-                radius: 12
-                color: Qt.alpha(rootCal.colorBg, 0.3)
-                
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 4
-                    spacing: 4
-                    
-                    // Tab: Weekly
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        radius: 8
-                        color: rootCal.activeTab === 0 ? rootCal.colorFg : "transparent"
-                        
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Weekly"
-                            color: rootCal.activeTab === 0 ? "#1a1b26" : rootCal.colorMuted
-                            font.family: rootCal.fontFamily
-                            font.pixelSize: 13
-                            font.bold: rootCal.activeTab === 0
-                        }
-                        
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: rootCal.activeTab = 0
-                        }
-                        
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                    }
-                    
-                    // Tab: Monthly
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        radius: 8
-                        color: rootCal.activeTab === 1 ? rootCal.colorFg : "transparent"
-                        
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Monthly"
-                            color: rootCal.activeTab === 1 ? "#1a1b26" : rootCal.colorMuted
-                            font.family: rootCal.fontFamily
-                            font.pixelSize: 13
-                            font.bold: rootCal.activeTab === 1
-                        }
-                        
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: rootCal.activeTab = 1
-                        }
-                        
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                    }
-                }
-            }
-            
-            // Settings Button
-            Rectangle {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-                radius: 12
-                color: Qt.alpha(rootCal.colorBg, 0.3)
-                
-                Text {
-                    anchors.centerIn: parent
-                    text: "" // Gear icon
-                    color: rootCal.colorMuted
-                    font.family: rootCal.fontFamily
-                    font.pixelSize: 16
-                }
-            }
-        }
         
-        Item { Layout.preferredHeight: 4 } // Spacer
-        
+        Item { Layout.fillHeight: true } // Top spacer to vertically center the calendar
+
         // 2. Month and Date
         RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: rootCal.activeTab === 0 ? 0 : -10 // Kéo ngược lên trên một chút khi ở Monthly
+            Layout.topMargin: -10
             
             Text {
-                text: "April"
+                text: ""
+                color: rootCal.colorMuted
+                font.family: rootCal.fontFamily
+                font.pixelSize: 14
+                
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -10
+                    onClicked: {
+                        var d = new Date(rootCal.currentDate);
+                        d.setMonth(d.getMonth() - 1);
+                        rootCal.currentDate = d;
+                        rootCal.updateCalendar();
+                    }
+                }
+            }
+            
+            Item { Layout.fillWidth: true }
+            
+            Text {
+                text: rootCal.monthName + " " + rootCal.currentDate.getFullYear()
                 color: rootCal.colorFg
                 font.family: rootCal.fontFamily
-                font.pixelSize: rootCal.activeTab === 0 ? 42 : 20
-                font.weight: rootCal.activeTab === 0 ? Font.Light : Font.Bold
-                Layout.fillWidth: true
+                font.pixelSize: 16
+                font.weight: Font.Bold
                 
                 // Hiệu ứng mượt mà khi thay đổi kích thước chữ
                 Behavior on font.pixelSize { NumberAnimation { duration: 200 } }
             }
             
+            Item { Layout.fillWidth: true }
+            
             Text {
-                text: "21"
-                color: rootCal.colorFg
+                text: ""
+                color: rootCal.colorMuted
                 font.family: rootCal.fontFamily
-                font.pixelSize: 42
-                font.weight: Font.Light
-                visible: rootCal.activeTab === 0
+                font.pixelSize: 14
+                
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -10
+                    onClicked: {
+                        var d = new Date(rootCal.currentDate);
+                        d.setMonth(d.getMonth() + 1);
+                        rootCal.currentDate = d;
+                        rootCal.updateCalendar();
+                    }
+                }
             }
         }
-        
-        Item { 
-            Layout.preferredHeight: rootCal.activeTab === 0 ? 4 : 0 
-            visible: rootCal.activeTab === 0
-        } // Spacer
         
         // 3. Days of the week row
         GridLayout {
             columns: 7
             columnSpacing: 0
-            rowSpacing: rootCal.activeTab === 0 ? 10 : 2 // Thu hẹp khoảng cách giữa các hàng ngày trong tháng
+            rowSpacing: 0 // Thu hẹp khoảng cách giữa các hàng ngày trong tháng
             Layout.fillWidth: true
             
             // Headers
@@ -155,7 +131,7 @@ Rectangle {
                     text: modelData
                     color: rootCal.colorMuted
                     font.family: rootCal.fontFamily
-                    font.pixelSize: 12
+                    font.pixelSize: 10
                     horizontalAlignment: Text.AlignHCenter
                     Layout.fillWidth: true
                 }
@@ -163,49 +139,30 @@ Rectangle {
             
             // Dates
             Repeater {
-                model: rootCal.activeTab === 0 
-                       ? [18, 19, 20, 21, 22, 23, 24] 
-                       : [ 31,  1,  2,  3,  4,  5,  6,
-                            7,  8,  9, 10, 11, 12, 13,
-                           14, 15, 16, 17, 18, 19, 20,
-                           21, 22, 23, 24, 25, 26, 27,
-                           28, 29, 30,  1,  2,  3,  4]
+                model: rootCal.monthlyDates
                            
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 32
+                    Layout.preferredHeight: 24
                     
                     Rectangle {
                         anchors.centerIn: parent
-                        width: 28
-                        height: 28
-                        radius: 8
-                        color: (modelData === 21 && (rootCal.activeTab === 0 || index === 21)) ? rootCal.colorFg : "transparent"
+                        width: 22
+                        height: 22
+                        radius: 6
+                        color: modelData.isToday ? rootCal.colorFg : "transparent"
                         
                         Text {
                             anchors.centerIn: parent
-                            text: modelData.toString()
+                            text: modelData.day.toString()
                             color: {
-                                if (modelData === 21 && (rootCal.activeTab === 0 || index === 21)) return "#1a1b26";
-                                if (rootCal.activeTab === 1 && (index < 1 || index > 30)) return Qt.alpha(rootCal.colorFg, 0.3);
+                                if (modelData.isToday) return "#1a1b26";
+                                if (!modelData.isCurrentMonth) return Qt.alpha(rootCal.colorFg, 0.3);
                                 return rootCal.colorFg;
                             }
                             font.family: rootCal.fontFamily
-                            font.pixelSize: 15
+                            font.pixelSize: 12
                         }
-                    }
-                    
-                    // Event dots under the date
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: -6
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: 4
-                        height: 4
-                        radius: 2
-                        color: rootCal.colorMuted
-                        visible: modelData === 18 || modelData === 19 || modelData === 22 || modelData === 24 || 
-                                 (rootCal.activeTab === 1 && (modelData === 5 || modelData === 12 || modelData === 28))
                     }
                 }
             }
@@ -221,15 +178,15 @@ Rectangle {
                 text: "󰂚 Add Reminder" // Bell icon + text
                 color: rootCal.colorMuted
                 font.family: rootCal.fontFamily
-                font.pixelSize: 13
+                font.pixelSize: 11
                 Layout.fillWidth: true
                 Layout.leftMargin: 4
             }
             
             Rectangle {
-                Layout.preferredWidth: 100
-                Layout.preferredHeight: 32
-                radius: 16
+                Layout.preferredWidth: 86
+                Layout.preferredHeight: 26
+                radius: 13
                 color: Qt.alpha(rootCal.colorBg, 0.4)
                 
                 Text {
@@ -237,7 +194,7 @@ Rectangle {
                     text: "+ New Event"
                     color: rootCal.colorFg
                     font.family: rootCal.fontFamily
-                    font.pixelSize: 12
+                    font.pixelSize: 10
                     font.bold: true
                 }
             }
