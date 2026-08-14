@@ -7,6 +7,8 @@ import Quickshell.Io
 import Quickshell.Bluetooth
 import Quickshell.Services.Mpris
 
+import "../widgets"
+
 Item {
     id: rootDashboard
     implicitWidth: gridLayout.implicitWidth
@@ -460,60 +462,7 @@ Item {
             }
         }
         
-        // App Launcher — gọi Rofi khi click (1x1)
-        BentoCard {
-            id: launcherCard
-            colSpan: 1; rowSpan: 1
-            
-            Process {
-                id: rofiProc
-                command: ["rofi", "-show", "drun", "-show-icons"]
-            }
-            
-            property bool hovered: false
-            
-            Column {
-                anchors.centerIn: parent
-                spacing: 12
-                
-                Rectangle {
-                    width: 56; height: 56; radius: 28
-                    color: launcherCard.hovered
-                        ? Qt.rgba(0.48, 0.64, 0.97, 0.85)
-                        : Qt.alpha(colMuted, 0.4)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    
-                    Behavior on color { ColorAnimation { duration: 180 } }
-                    
-                    Text {
-                        anchors.centerIn: parent
-                        text: "󰀻"
-                        color: "#ffffff"
-                        font.family: rootDashboard.fontFamily
-                        font.pixelSize: 28
-                    }
-                }
-                
-                Text {
-                    text: "Launcher"
-                    color: launcherCard.hovered ? colBlue : colFg
-                    font.family: rootDashboard.fontFamily
-                    font.pixelSize: 12
-                    font.bold: true
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    Behavior on color { ColorAnimation { duration: 180 } }
-                }
-            }
-            
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onEntered: launcherCard.hovered = true
-                onExited:  launcherCard.hovered = false
-                onClicked: rofiProc.running = true
-            }
-        }
+
         
         // Analog Clock (1x1)
         BentoCard {
@@ -557,8 +506,7 @@ Item {
                     Rectangle { x: 47; y: 22; width: 3; height: 26; color: colFg; radius: 1.5; transform: Rotation { origin.x: 1.5; origin.y: 26; angle: clockItem.hourAngle } }
                     // Minute Hand
                     Rectangle { x: 47; y: 12; width: 3; height: 36; color: colCyan; radius: 1.5; transform: Rotation { origin.x: 1.5; origin.y: 36; angle: clockItem.minuteAngle } }
-                    // Second Hand
-                    Rectangle { x: 47; y: 6; width: 2; height: 42; color: "#f7768e"; radius: 1; transform: Rotation { origin.x: 1; origin.y: 42; angle: clockItem.secondAngle } }
+
                     
                     // Center Dot
                     Rectangle { anchors.centerIn: parent; width: 8; height: 8; radius: 4; color: "#f7768e" }

@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import QtQuick
+import "../widgets"
 
 PanelWindow {
     id: brightnessWindow

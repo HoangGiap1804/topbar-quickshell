@@ -3,6 +3,7 @@ import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import Quickshell.Io
 import QtQuick
+import "../widgets"
 
 PanelWindow {
     id: volumeWindow
@@ -24,7 +25,7 @@ PanelWindow {
     // Pipewire logic
     property var sink: Pipewire.defaultAudioSink
     readonly property bool sinkReady: sink && sink.ready
-    readonly property int vol: sinkReady ? Math.min(100, Math.round(sink.audio.volume * 100)) : 0
+    readonly property int vol: sinkReady ? Math.min(500, Math.round(sink.audio.volume * 100)) : 0
     
     PwObjectTracker {
         objects: [volumeWindow.sink]
@@ -69,6 +70,7 @@ PanelWindow {
         isOpen: volumeWindow.isOpen
         titleText: "VOLUME"
         accentColor: "#7a42ff"
+        maxValue: 500
         currentValue: volumeWindow.vol
         
         onValueChanged: (newVal) => {
