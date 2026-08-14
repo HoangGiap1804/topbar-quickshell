@@ -23,7 +23,7 @@ Item {
     property color colMuted: "#444b6a"
     property string fontFamily: "JetBrainsMono Nerd Font"
     // Custom background image for the cards (set to any file:// or http:// URL)
-    property string cardBackgroundImage: "/home/nqim/.dotfiles/wallpapers/wallpaper.jpeg"
+    property string cardBackgroundImage: "/home/nqim/.dotfiles/wallpapers/wallpaper2.jpg"
 
     component BentoCard: Item {
         id: cardRoot
