@@ -10,7 +10,7 @@ PanelWindow {
     anchors.left: true
     anchors.right: true
     
-    implicitHeight: 140
+    implicitHeight: 20
     color: "transparent"
     
     exclusiveZone: 0
@@ -48,10 +48,10 @@ PanelWindow {
     Region { id: emptyRegion }
     Region {
         id: windowRegion
-        x: (parent.width * 0.75) - (320 / 2)
+        x: (brightnessWindow.width * 0.75) - (320 / 2)
         y: 0
         width: 320
-        height: 100
+        height: 20
     }
     mask: isOpen ? windowRegion : emptyRegion
     
@@ -59,7 +59,7 @@ PanelWindow {
 
     LinearDialWidget {
         id: dialWidget
-        x: (parent.width * 0.75) - (width / 2)
+        x: (brightnessWindow.width * 0.75) - (width / 2)
         isOpen: brightnessWindow.isOpen
         titleText: "BRIGHTNESS"
         accentColor: "#e0af68"

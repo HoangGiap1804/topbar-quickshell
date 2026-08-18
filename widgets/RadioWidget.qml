@@ -6,16 +6,23 @@ Rectangle {
     id: root
     width: 450
     height: 300
-    color: "#0a0a0c"
+    color: "transparent"
     radius: 16
-    clip: true
+    
 
     property real currentValue: 98.8
     property real minValue: 88.0
     property real maxValue: 108.0
     
+    property var tickMarks: [88, 92, 96, 98, 100, 104, 107]
+    property string unitText: "FM"
+    
     property real angleRange: 160 // Dải góc cho các vạch (từ 88 đến 108)
     property real valueRange: maxValue - minValue
+    
+    // Đưa tâm của cung tròn sát mép phải
+    property real centerX: root.width
+    property real centerY: root.height * 0.5
     
     // Hàm chuyển đổi từ giá trị sang góc trên đĩa
     function valueToAngle(val) {
@@ -24,8 +31,8 @@ Rectangle {
 
     // Các vòng cung tĩnh bên ngoài
     Shape {
-        x: root.width * 0.75
-        y: root.height * 0.5
+        x: root.centerX
+        y: root.centerY
         
         // Nửa dưới (Tím nhạt)
         ShapePath {
@@ -57,8 +64,8 @@ Rectangle {
     // Đĩa quay chứa vạch và số
     Item {
         id: dial
-        x: root.width * 0.75
-        y: root.height * 0.5
+        x: root.centerX
+        y: root.centerY
         
         // Quay để giá trị hiện tại nằm ở 180 độ (nằm ngang bên trái)
         rotation: -root.valueToAngle(root.currentValue)
@@ -105,7 +112,7 @@ Rectangle {
 
         // Số (Numbers)
         Repeater {
-            model: [88, 92, 96, 98, 100, 104, 107]
+            model: root.tickMarks
             Item {
                 property real val: modelData
                 rotation: 180 + root.valueToAngle(val)
@@ -116,7 +123,7 @@ Rectangle {
                     y: -height / 2
                     text: modelData
                     color: "#888"
-                    font.pixelSize: 12
+                    font.pixelSize: 30 // Giảm từ 28 xuống 18 cho đỡ che chữ
                     font.family: "JetBrainsMono Nerd Font"
                     // Chống lật chữ bằng cách xoay ngược lại với góc quay của đĩa
                     rotation: -dial.rotation - parent.rotation
@@ -127,8 +134,8 @@ Rectangle {
 
     // Kim chỉ (Indicator) tĩnh ở bên trái
     Item {
-        x: root.width * 0.75
-        y: root.height * 0.5
+        x: root.centerX
+        y: root.centerY
         
         // Vạch ngang của kim
         Rectangle {
@@ -152,35 +159,37 @@ Rectangle {
         }
     }
     
-    // UI hiển thị tần số ở chính giữa
+    // UI hiển thị tần số ở bên trái
     Rectangle {
-        x: root.width * 0.75 - 120
-        y: root.height * 0.5 - 30
-        width: 130
-        height: 60
-        color: "#1a1a24"
-        radius: 30
-        border.color: "#2a2a34"
+        x: 80
+        y: root.centerY - 25
+        width: 100
+        height: 50
+        color: Qt.rgba(0.1, 0.1, 0.14, 0.8)
+        radius: 25
+        border.color: Qt.rgba(1, 1, 1, 0.1)
         border.width: 1
         
         Text {
             anchors.centerIn: parent
-            text: root.currentValue.toFixed(1)
+            text: Math.round(root.currentValue)
             color: "white"
-            font.pixelSize: 32
+            font.pixelSize: 28 // Thu nhỏ lại
             font.bold: true
         }
     }
     
     Text {
-        x: root.width * 0.75 - 110
-        y: root.height * 0.5 - 65
-        text: root.currentValue.toFixed(1) + " FM"
-        color: "#aaa"
-        font.pixelSize: 16
+        anchors.right: parent.right
+        anchors.rightMargin: 30
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.unitText
+        color: "#ccc"
+        font.family: "JetBrainsMono Nerd Font"
+        font.pixelSize: 56 // Cỡ icon rất to
     }
     
-    // Tương tác kéo thả chuột / vuốt
+    // Tương tác kéo thả chuột / vuốt và cuộn chuột
     MouseArea {
         anchors.fill: parent
         property real startY: 0
@@ -192,8 +201,16 @@ Rectangle {
         }
         onPositionChanged: {
             let dy = mouseY - startY
-            // Kéo xuống (dy > 0) -> số nhỏ lên -> tăng giá trị
-            let newVal = startVal + dy / 10.0 
+            // Tốc độ kéo thay đổi theo khoảng giá trị (range)
+            let newVal = startVal + dy * (root.valueRange / 300.0) 
+            if (newVal < root.minValue) newVal = root.minValue
+            if (newVal > root.maxValue) newVal = root.maxValue
+            root.currentValue = newVal
+        }
+        onWheel: (wheel) => {
+            // Bước nhảy bằng 2% của tổng dải giá trị
+            let step = root.valueRange * 0.02; 
+            let newVal = root.currentValue + (wheel.angleDelta.y > 0 ? step : -step);
             if (newVal < root.minValue) newVal = root.minValue
             if (newVal > root.maxValue) newVal = root.maxValue
             root.currentValue = newVal

@@ -18,7 +18,7 @@ Item {
     
     // Kích thước chuẩn dạng pill ngang
     implicitWidth: 320
-    implicitHeight: 40
+    implicitHeight: 20
     
     // Thuộc tính cuộn nội bộ
     property real pixelPerUnit: 6 // 1% = 6px
@@ -36,7 +36,7 @@ Item {
         // Bỏ clip: true ở đây để không bị cắt xén phần cong (flare) của Notch
         
         property real slant: 4
-        property real flare: 18
+        property real flare: 12
         
         ShapePath {
             fillGradient: LinearGradient {
@@ -45,7 +45,7 @@ Item {
                 GradientStop { position: 0.0; color: "#000000" }
                 GradientStop { position: 1.0; color: Qt.alpha("#000000", 0.8) }
             }
-            strokeColor: Qt.alpha(root.accentColor, 0.4)
+            strokeColor: Qt.alpha("#000000", 0.8)
             strokeWidth: 1
             
             startX: -bg.flare; startY: 0
@@ -106,9 +106,9 @@ Item {
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 8
+                        anchors.bottomMargin: 2
                         width: 2
-                        height: 12
+                        height: 6
                         color: root.accentColor
                     }
                     
@@ -118,9 +118,9 @@ Item {
                         Rectangle {
                             x: (index + 1) * 2 * root.pixelPerUnit
                             anchors.bottom: parent.bottom
-                            anchors.bottomMargin: 8
+                            anchors.bottomMargin: 2
                             width: 1
-                            height: 6
+                            height: 4
                             color: Qt.alpha(root.accentColor, 0.4)
                         }
                     }
@@ -129,10 +129,12 @@ Item {
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 24
+                        anchors.bottomMargin: 8
                         text: parent.val
-                        color: "#a9b1d6"
-                        font.pixelSize: 10
+                        color: "#ffffff"
+                        style: Text.Outline
+                        styleColor: "#000000"
+                        font.pixelSize: 7
                         font.family: "JetBrainsMono Nerd Font"
                         font.bold: true
                     }
@@ -165,21 +167,21 @@ Item {
         Shape {
             anchors.centerIn: titleLabel
             width: 80
-            height: 40
+            height: 20
             opacity: 0.4
             ShapePath {
                 fillGradient: RadialGradient {
-                    centerX: 40; centerY: 20
+                    centerX: 40; centerY: 10
                     centerRadius: 40
-                    focalX: 40; focalY: 20
+                    focalX: 40; focalY: 10
                     GradientStop { position: 0.0; color: root.accentColor }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
                 strokeColor: "transparent"
                 startX: 0; startY: 0
                 PathLine { x: 80; y: 0 }
-                PathLine { x: 80; y: 40 }
-                PathLine { x: 0; y: 40 }
+                PathLine { x: 80; y: 20 }
+                PathLine { x: 0; y: 20 }
                 PathLine { x: 0; y: 0 }
             }
         }
@@ -191,8 +193,10 @@ Item {
             anchors.rightMargin: 20
             anchors.verticalCenter: parent.verticalCenter
             text: root.titleText
-            color: "#a9b1d6"
-            font.pixelSize: 12
+            color: "#ffffff"
+            style: Text.Outline
+            styleColor: "#000000"
+            font.pixelSize: 8
             font.family: "JetBrainsMono Nerd Font"
             font.bold: true
         }
