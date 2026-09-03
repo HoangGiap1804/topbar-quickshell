@@ -93,9 +93,20 @@ ShellRoot {
                     Region {
                         id: pillRegion
                         x: Math.floor(pill.x)
-                        y: Math.floor(pill.y + pill.yOffset)
+                        y: 0
                         width: Math.ceil(pill.width)
-                        height: Math.ceil(pill.height)
+                        height: Math.ceil(Math.max(pill.y + pill.yOffset + pill.height, 10))
+                    }
+                    
+                    // Bắt sự kiện di chuột ở viền trên cùng khi pill ẩn
+                    MouseArea {
+                        id: hoverTrigger
+                        width: pill.width
+                        height: 10
+                        anchors.top: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        hoverEnabled: true
+                        enabled: pill.isMini && pill.hasWindows && !pill.showLauncher
                     }
                     
                     Region {
@@ -130,6 +141,7 @@ ShellRoot {
                         root: root
                         appLauncherItem: appLauncherItem
                         monitorName: modelData.name
+                        isTriggerHovered: hoverTrigger.containsMouse
                     }
 
                     // ── App Launcher cards (bên dưới pill notch) ─────────────────────────

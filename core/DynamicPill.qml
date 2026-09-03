@@ -111,11 +111,24 @@ Item {
         easing.type: Easing.OutExpo
     }
 
+    property bool isTriggerHovered: false
+    property bool isHovered: pillMouseArea.containsMouse || isTriggerHovered
+
     onHasWindowsChanged: {
         if (isMini && !isShrinking && !isExpanding && !showLauncher) {
-            if (hasWindows) {
+            if (hasWindows && !isHovered) {
                 hideUpwardsAnim.start();
             } else {
+                showDownwardsAnim.start();
+            }
+        }
+    }
+
+    onIsHoveredChanged: {
+        if (isMini && !isShrinking && !isExpanding && !showLauncher) {
+            if (hasWindows && !isHovered) {
+                hideUpwardsAnim.start();
+            } else if (isHovered) {
                 showDownwardsAnim.start();
             }
         }
@@ -332,7 +345,9 @@ Item {
     }
 
     MouseArea {
+        id: pillMouseArea
         anchors.fill: parent
+        hoverEnabled: true
         cursorShape: (pill.isMini && !pill.showLauncher) ? Qt.PointingHandCursor : Qt.ArrowCursor
         enabled: pill.isMini && !pill.showLauncher
         onClicked: { if (!expandAnim.running) expandAnim.start() }
