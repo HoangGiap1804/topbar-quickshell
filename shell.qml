@@ -64,7 +64,8 @@ ShellRoot {
                     implicitHeight: 25
                     color: "transparent"
                     
-                    exclusiveZone: 20
+                    // Release space if pill is hidden upwards
+                    exclusiveZone: (pill.hasWindows && pill.isMini && !pill.showLauncher) ? 0 : 20
                     WlrLayershell.layer: WlrLayer.Top
                     
                     // Không nhận click
@@ -92,7 +93,7 @@ ShellRoot {
                     Region {
                         id: pillRegion
                         x: Math.floor(pill.x)
-                        y: Math.floor(pill.y)
+                        y: Math.floor(pill.y + pill.yOffset)
                         width: Math.ceil(pill.width)
                         height: Math.ceil(pill.height)
                     }
@@ -128,6 +129,7 @@ ShellRoot {
                         id: pill
                         root: root
                         appLauncherItem: appLauncherItem
+                        monitorName: modelData.name
                     }
 
                     // ── App Launcher cards (bên dưới pill notch) ─────────────────────────

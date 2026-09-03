@@ -9,6 +9,7 @@ Row {
     property bool showingWorkspace: false
     property bool showLauncher: false
     property int currentWorkspaceId: 1
+    property var monitorWorkspaces: []
     
     spacing: 12
     
@@ -20,11 +21,11 @@ Row {
     Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
     
     Repeater {
-        model: 9
+        model: wsDots.monitorWorkspaces
         Rectangle {
-            property int wsId: index + 1
+            property int wsId: modelData.id
             property bool isActive: wsId === wsDots.currentWorkspaceId
-            property bool hasWindows: Hyprland.workspaces.values.find(w => w.id === wsId) !== undefined
+            property bool hasWindows: modelData.windows > 0
             
             width: isActive ? 28 : 10
             height: 10
