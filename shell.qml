@@ -46,6 +46,28 @@ ShellRoot {
     }
     
     signal toggleLauncher(string targetMonitor)
+    
+    property string focusedMonitorName: ""
+    property int _fwId: Quickshell.Hyprland.focusedWorkspace ? Quickshell.Hyprland.focusedWorkspace.id : 0
+    on_FwIdChanged: {
+        focusedMonitorProc.running = true
+    }
+    
+    Process {
+        id: focusedMonitorProc
+        command: ["bash", "-c", "hyprctl activeworkspace -j 2>/dev/null"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var data = JSON.parse(this.text.trim());
+                    if (data && data.monitor) root.focusedMonitorName = data.monitor;
+                } catch(e) {}
+            }
+        }
+    }
+    
+    // Initialize focusedMonitorName
+    Component.onCompleted: focusedMonitorProc.running = true
 
     Variants {
         model: Quickshell.screens
@@ -54,24 +76,6 @@ ShellRoot {
                 required property var modelData
 
                 // Cửa sổ dự trữ khoảng không gian 40px ở mép trên cùng
-                PanelWindow {
-                    id: reserve
-                    screen: modelData
-                    anchors.top: true
-                    anchors.left: true
-                    anchors.right: true
-                    
-                    implicitHeight: 25
-                    color: "transparent"
-                    
-                    // Release space if pill is hidden upwards
-                    exclusiveZone: (pill.hasWindows && pill.isMini && !pill.showLauncher) ? 0 : 20
-                    WlrLayershell.layer: WlrLayer.Top
-                    
-                    // Không nhận click
-                    mask: Region {}
-                }
-
                 // Cửa sổ Overlay toàn màn hình chứa Pill
                 PanelWindow {
                     id: overlay
@@ -86,6 +90,10 @@ ShellRoot {
                     WlrLayershell.layer: WlrLayer.Top
                     WlrLayershell.namespace: "quickshell-pill"
                     WlrLayershell.keyboardFocus: pill.showLauncher ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                    
+                    // Không chiếm không gian của cửa sổ, pill sẽ luôn lơ lửng (overlay)
+                    // Vì khi có cửa sổ pill sẽ tự động trượt lên ẩn đi nên không bị đè lên cửa sổ.
+                    exclusiveZone: 0
                     
                     // Cấu hình vùng nhận diện click (Mask)
                     mask: (pill.isMini && !pill.showLauncher) ? pillRegion : fullRegion
@@ -185,6 +193,16 @@ ShellRoot {
                         }
                     }
                 }
+                
+                // Các OSD hiển thị dưới dạng Đĩa quay Radio, gắn với từng màn hình
+                VolumeOsdWindow {
+                    screen: modelData
+                    isFocusedMonitor: root.focusedMonitorName === modelData.name
+                }
+                BrightnessOsdWindow {
+                    screen: modelData
+                    isFocusedMonitor: root.focusedMonitorName === modelData.name
+                }
             } // End Scope
         } // End Component
     } // End Variants
@@ -214,9 +232,5 @@ ShellRoot {
             }
         }
     }
-
-    // Các OSD hiển thị dưới dạng Đĩa quay Radio
-    VolumeOsdWindow {}
-    BrightnessOsdWindow {}
     
 } // Đóng ShellRoot

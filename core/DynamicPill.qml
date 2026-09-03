@@ -182,7 +182,6 @@ Item {
     property bool isFadingOut: false
     property bool isExpanding: false
     property bool showLauncher: false
-    property bool showingWorkspace: false
     
     onShowLauncherChanged: {
         if (showLauncher) {
@@ -197,25 +196,11 @@ Item {
     property int currentWorkspaceId: 1
     property bool _wsInitialized: false
     
-    onCurrentWorkspaceIdChanged: {
-        if (!_wsInitialized) {
-            _wsInitialized = true;
-            return;
-        }
-        if (isMini && !isShrinking) {
-            showingWorkspace = true;
-            wsTimer.restart();
-        }
-    }
+    readonly property real currentWidth: isMini ? miniWidth : expandedWidth
     
-    Timer {
-        id: wsTimer
-        interval: 1500
-        onTriggered: pill.showingWorkspace = false
-    }
-
-    property real miniWidth: pill.showLauncher ? 300 : (showingWorkspace ? 240 : 100)
-    property real miniHeight: 20 // Chiều cao khi thu nhỏ (notch)
+    // Define mini width based on states
+    readonly property real miniWidth: showLauncher ? 300 : 100
+    readonly property real miniHeight: 20 // Chiều cao khi thu nhỏ (notch)
     
     onIsMiniChanged: {
         if (isMini && root) {
@@ -280,7 +265,6 @@ Item {
         anchors.centerIn: parent
         isMini: pill.isMini
         isShrinking: pill.isShrinking
-        showingWorkspace: pill.showingWorkspace
         showLauncher: pill.showLauncher
         fontFamily: root ? root.fontFamily : "sans-serif"
     }
@@ -332,16 +316,6 @@ Item {
     // Clear search text from outside
     function clearSearch() {
         launcherSearchInput.text = ""
-    }
-
-    WorkspaceDots {
-        anchors.centerIn: parent
-        isMini: pill.isMini
-        isShrinking: pill.isShrinking
-        showingWorkspace: pill.showingWorkspace
-        showLauncher: pill.showLauncher
-        currentWorkspaceId: pill.currentWorkspaceId
-        monitorWorkspaces: pill.monitorWorkspaces
     }
 
     MouseArea {

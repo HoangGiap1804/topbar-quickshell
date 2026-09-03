@@ -22,6 +22,8 @@ PanelWindow {
     property bool isOpen: false
     property bool internalChange: false
     
+    property bool isFocusedMonitor: true
+    
     // Pipewire logic
     property var sink: Pipewire.defaultAudioSink
     readonly property bool sinkReady: sink && sink.ready
@@ -35,7 +37,7 @@ PanelWindow {
         if (internalChange) return;
         
         dialWidget.currentValue = vol
-        osdTimer.restart()
+        if (isFocusedMonitor) osdTimer.restart()
     }
     
     Timer {

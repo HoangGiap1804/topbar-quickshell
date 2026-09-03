@@ -21,13 +21,15 @@ PanelWindow {
     property bool isOpen: false
     property bool internalChange: false
     
+    property bool isFocusedMonitor: true
+    
     Brightness {
         id: brightnessTracker
         visible: false
         onBrightnessUpdated: {
             if (internalChange) return;
             dialWidget.currentValue = brightnessTracker.percent * 100
-            osdTimer.restart()
+            if (isFocusedMonitor) osdTimer.restart()
         }
     }
     

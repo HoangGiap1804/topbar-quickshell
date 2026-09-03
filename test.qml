@@ -7,11 +7,12 @@ ShellRoot {
         interval: 1000
         running: true
         onTriggered: {
-            var monitors = Hyprland.monitors.values;
-            console.log("Monitors count:", monitors.length);
-            for (var i = 0; i < monitors.length; i++) {
-                var m = monitors[i];
-                console.log("Monitor:", m.name, "activeWorkspace id:", m.activeWorkspace ? m.activeWorkspace.id : "null");
+            var fw = Hyprland.focusedWorkspace;
+            if (fw) {
+                var ws = Hyprland.workspaces.values.find(w => w.id === fw.id);
+                if (ws) {
+                    console.log("Monitor for active workspace:", ws.monitor ? ws.monitor.name : "null");
+                }
             }
             Qt.quit()
         }
