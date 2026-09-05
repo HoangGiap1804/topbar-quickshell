@@ -7,11 +7,13 @@ Text {
     property bool isShrinking: false
     property bool showLauncher: false
     
+    property bool showingWorkspace: false
+    
     property string fontFamily: "JetBrainsMono Nerd Font"
     
     anchors.verticalCenterOffset: {
         if (isMini && !isShrinking) {
-            if (showLauncher) return -20
+            if (showLauncher || showingWorkspace) return -20
             return 0
         }
         return 0
@@ -19,7 +21,7 @@ Text {
     
     color: "#ffffff"
     font { family: miniClock.fontFamily; pixelSize: 12; bold: true }
-    opacity: (isMini && !isShrinking && !showLauncher) ? 1 : 0
+    opacity: (isMini && !isShrinking && !showLauncher && !showingWorkspace) ? 1 : 0
     visible: opacity > 0
     
     Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }

@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Bluetooth
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
+import Quickshell.Hyprland
 import "../osd" as Osd
 
 import "../widgets"
@@ -789,6 +790,146 @@ Item {
                                 briResetTimer.restart();
                                 brightnessCommand.command = ["brightnessctl", "s", Math.round(currentValue) + "%"];
                                 brightnessCommand.running = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Workspaces (2x1)
+        BentoCard {
+            id: workspacesCard
+            colSpan: 2; rowSpan: 1
+            
+            property var monitorsData: []
+            
+            Process { id: workspaceDispatcher }
+            
+            Timer {
+                interval: 500
+                running: true
+                repeat: true
+                onTriggered: wsProc.running = true
+            }
+            
+            Component.onCompleted: wsProc.running = true
+            
+            Process {
+                id: wsProc
+                command: ["bash", "-c", "echo '---monitors---'; hyprctl monitors -j 2>/dev/null; echo '---workspaces---'; hyprctl workspaces -j 2>/dev/null"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        var output = this.text.trim();
+                        if (output === "") return;
+                        try {
+                            var parts = output.split("---workspaces---");
+                            if (parts.length < 2) return;
+                            
+                            var monPart = parts[0].replace("---monitors---", "").trim();
+                            var wsPart = parts[1].trim();
+                            
+                            var monitors = JSON.parse(monPart);
+                            var workspaces = JSON.parse(wsPart);
+                            
+                            var mData = [];
+                            
+                            for (var i = 0; i < monitors.length; i++) {
+                                var m = monitors[i];
+                                var mWs = [];
+                                for (var j = 0; j < workspaces.length; j++) {
+                                    if (workspaces[j].monitor === m.name) {
+                                        mWs.push(workspaces[j]);
+                                    }
+                                }
+                                mWs.sort(function(a, b) { return a.id - b.id; });
+                                
+                                mData.push({
+                                    name: m.name,
+                                    activeWsId: m.activeWorkspace.id,
+                                    focused: m.focused,
+                                    workspaces: mWs
+                                });
+                            }
+                            
+                            workspacesCard.monitorsData = mData;
+                        } catch(e) {}
+                    }
+                }
+            }
+            
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 16
+                spacing: 8
+                
+                Text {
+                    text: "Workspaces"
+                    color: colFg
+                    font.family: rootDashboard.fontFamily
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+                
+                ListView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    model: workspacesCard.monitorsData
+                    spacing: 8
+                    clip: true
+                    
+                    delegate: RowLayout {
+                        width: ListView.view.width
+                        spacing: 12
+                        
+                        property var mData: modelData
+                        
+                        Text {
+                            text: "󰍹 " + mData.name
+                            color: mData.focused ? colCyan : colMuted
+                            font.family: rootDashboard.fontFamily
+                            font.pixelSize: 12
+                            font.bold: true
+                            Layout.preferredWidth: 60
+                        }
+                        
+                        Row {
+                            spacing: 8
+                            Repeater {
+                                model: mData.workspaces
+                                delegate: Rectangle {
+                                    property var wsData: modelData
+                                    property bool isFocusedMonitor: mData.focused
+                                    property bool isActive: wsData.id === mData.activeWsId
+                                    property bool isGlobalActive: isFocusedMonitor && isActive
+                                    property bool hasWindows: wsData.windows > 0
+                                    
+                                    width: isGlobalActive ? 24 : 16
+                                    height: 16
+                                    radius: 8
+                                    
+                                    color: isGlobalActive ? colCyan : (isActive ? colBlue : Qt.alpha(colMuted, 0.5))
+                                    border.color: hasWindows && !isActive ? colMuted : "transparent"
+                                    border.width: 1
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: (wsData.id - 1) % 10 + 1
+                                        color: (isActive || isGlobalActive) ? "#1a1819" : colFg
+                                        font.family: rootDashboard.fontFamily
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            workspaceDispatcher.command = ["hyprctl", "dispatch", "workspace", wsData.id.toString()];
+                                            workspaceDispatcher.running = true;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

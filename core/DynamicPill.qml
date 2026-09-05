@@ -114,9 +114,9 @@ Item {
     property bool isTriggerHovered: false
     property bool isHovered: pillMouseArea.containsMouse || isTriggerHovered
 
-    onHasWindowsChanged: {
+    function updatePillVisibility() {
         if (isMini && !isShrinking && !isExpanding && !showLauncher) {
-            if (hasWindows && !isHovered) {
+            if (hasWindows && !isHovered && !showingWorkspace) {
                 hideUpwardsAnim.start();
             } else {
                 showDownwardsAnim.start();
@@ -124,15 +124,9 @@ Item {
         }
     }
 
-    onIsHoveredChanged: {
-        if (isMini && !isShrinking && !isExpanding && !showLauncher) {
-            if (hasWindows && !isHovered) {
-                hideUpwardsAnim.start();
-            } else if (isHovered) {
-                showDownwardsAnim.start();
-            }
-        }
-    }
+    onHasWindowsChanged: updatePillVisibility()
+    onIsHoveredChanged: updatePillVisibility()
+    onShowingWorkspaceChanged: updatePillVisibility()
 
     
     SequentialAnimation {
@@ -165,7 +159,7 @@ Item {
         // 7. Từ từ trượt xuống
         NumberAnimation { 
             target: pill; property: "yOffset"; 
-            to: (pill.hasWindows && !pill.showLauncher) ? -(pill.miniHeight + 50) : 0; 
+            to: (pill.hasWindows && !pill.showLauncher && !pill.isHovered && !pill.showingWorkspace) ? -(pill.miniHeight + 50) : 0; 
             duration: 400; easing.type: Easing.OutExpo 
         }
     }
@@ -182,13 +176,14 @@ Item {
     property bool isFadingOut: false
     property bool isExpanding: false
     property bool showLauncher: false
+    property bool showingWorkspace: false
     
     onShowLauncherChanged: {
         if (showLauncher) {
             launcherSearchInput.forceActiveFocus()
             if (yOffset !== 0) showDownwardsAnim.start()
         } else {
-            if (hasWindows && isMini) hideUpwardsAnim.start()
+            updatePillVisibility()
         }
     }
     
@@ -196,10 +191,28 @@ Item {
     property int currentWorkspaceId: 1
     property bool _wsInitialized: false
     
+    onCurrentWorkspaceIdChanged: {
+        if (!_wsInitialized) {
+            _wsInitialized = true;
+            return;
+        }
+        if (isMini && !isShrinking) {
+            showingWorkspace = true;
+            wsTimer.restart();
+        }
+    }
+    
+    Timer {
+        id: wsTimer
+        interval: 1500
+        onTriggered: pill.showingWorkspace = false
+    }
+    
+    readonly property real expandedWidth: contentWidth + 50
     readonly property real currentWidth: isMini ? miniWidth : expandedWidth
     
     // Define mini width based on states
-    readonly property real miniWidth: showLauncher ? 300 : 100
+    readonly property real miniWidth: showLauncher ? 300 : (showingWorkspace ? 240 : 100)
     readonly property real miniHeight: 20 // Chiều cao khi thu nhỏ (notch)
     
     onIsMiniChanged: {
@@ -265,6 +278,7 @@ Item {
         anchors.centerIn: parent
         isMini: pill.isMini
         isShrinking: pill.isShrinking
+        showingWorkspace: pill.showingWorkspace
         showLauncher: pill.showLauncher
         fontFamily: root ? root.fontFamily : "sans-serif"
     }
@@ -316,6 +330,16 @@ Item {
     // Clear search text from outside
     function clearSearch() {
         launcherSearchInput.text = ""
+    }
+
+    WorkspaceDots {
+        anchors.centerIn: parent
+        isMini: pill.isMini
+        isShrinking: pill.isShrinking
+        showingWorkspace: pill.showingWorkspace
+        showLauncher: pill.showLauncher
+        currentWorkspaceId: pill.currentWorkspaceId
+        monitorWorkspaces: pill.monitorWorkspaces
     }
 
     MouseArea {

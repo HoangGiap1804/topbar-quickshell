@@ -27,11 +27,20 @@ Row {
             property bool isActive: wsId === wsDots.currentWorkspaceId
             property bool hasWindows: modelData.windows > 0
             
-            width: isActive ? 28 : 10
-            height: 10
+            width: isActive ? 24 : 16
+            height: 16
             radius: height / 2
             
             color: (isActive || hasWindows) ? "#ffffff" : "#444b6a"
+            
+            Text {
+                anchors.centerIn: parent
+                text: (parent.wsId - 1) % 10 + 1
+                color: (parent.isActive || parent.hasWindows) ? "#1a1819" : "#ffffff"
+                font.family: "sans-serif"
+                font.pixelSize: 10
+                font.bold: true
+            }
             
             Behavior on width {
                 NumberAnimation { duration: 300; easing.type: Easing.OutExpo }
